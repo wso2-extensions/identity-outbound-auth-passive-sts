@@ -228,6 +228,7 @@ public class PassiveSTSManager {
 
     /**
      * @param samlString
+     * @param samlString
      * @return
      * @throws PassiveSTSException
      */
@@ -261,7 +262,9 @@ public class PassiveSTSManager {
                     throw new PassiveSTSException("Security Token is not found in the Response");
                 }
 
-                log.debug("Qualifying 'http://schemas.xmlsoap.org/ws/2005/02/trust' as the Request Security Token Response");
+                if (log.isDebugEnabled()) {
+                    log.debug("Qualifying 'http://schemas.xmlsoap.org/ws/2005/02/trust' as the Request Security Token Response");
+                }
             }
 
             if (nodeList.getLength() > 1) {
