@@ -228,6 +228,7 @@ public class PassiveSTSManager {
 
     /**
      * @param samlString
+     * @param samlString
      * @return
      * @throws PassiveSTSException
      */
@@ -254,7 +255,16 @@ public class PassiveSTSManager {
             NodeList nodeList = element.getElementsByTagNameNS("http://docs.oasis-open.org/ws-sx/ws-trust/200512",
                     "RequestedSecurityToken");
             if (nodeList == null || nodeList.getLength() == 0) {
-                throw new PassiveSTSException("Security Token is not found in the Response");
+                nodeList = element.getElementsByTagNameNS("http://schemas.xmlsoap.org/ws/2005/02/trust",
+                        "RequestedSecurityToken");
+
+                if(nodeList == null || nodeList.getLength() == 0) {
+                    throw new PassiveSTSException("Security Token is not found in the Response");
+                }
+
+                if (log.isDebugEnabled()) {
+                    log.debug("Qualifying 'http://schemas.xmlsoap.org/ws/2005/02/trust' as the Request Security Token Response");
+                }
             }
 
             if (nodeList.getLength() > 1) {
