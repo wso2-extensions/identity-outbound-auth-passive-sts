@@ -117,11 +117,11 @@ public class PassiveSTSAuthenticator extends AbstractApplicationAuthenticator im
                 new PassiveSTSManager(externalIdPConfig).processResponse(request, context);
             } catch (PassiveSTSException e) {
                 log.error("Exception while processing WS-Federation response", e);
-                throw new AuthenticationFailedException(e.getMessage(), e);
+                throw new AuthenticationFailedException(e.getMessage(), context.getSubject(), e);
             }
         } else {
             log.error("wresult can not be found in request");
-            throw new AuthenticationFailedException("wresult can not be found in request");
+            throw new AuthenticationFailedException("wresult can not be found in request", context.getSubject());
         }
 
     }
