@@ -256,7 +256,7 @@
     <properties>
         <!--Carbon framework version-->
         <identity.framework.version>5.2.0</identity.framework.version>
-        <carbon.identity.package.import.version.range>[5.0.0, 6.0.0)</carbon.identity.package.import.version.range>
+        <carbon.identity.framework.import.version.range>[5.0.0, 6.0.0)</carbon.identity.framework.import.version.range>
         <identity.outbound.auth.passive.sts.export.version>${project.version}</identity.outbound.auth.passive.sts.export.version>
 
         <!-- Carbon kernel version -->
