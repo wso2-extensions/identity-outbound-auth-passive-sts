@@ -21,22 +21,29 @@ package org.wso2.carbon.identity.application.authenticator.passive.sts.manager;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.xerces.impl.Constants;
+import org.joda.time.DateTime;
 import org.opensaml.Configuration;
 import org.opensaml.DefaultBootstrap;
+import org.opensaml.common.SignableSAMLObject;
+import org.opensaml.common.xml.SAMLConstants;
 import org.opensaml.saml1.core.Attribute;
 import org.opensaml.saml1.core.AttributeStatement;
 import org.opensaml.saml1.core.NameIdentifier;
 import org.opensaml.saml1.core.Subject;
+import org.opensaml.security.SAMLSignatureProfileValidator;
 import org.opensaml.xml.ConfigurationException;
 import org.opensaml.xml.XMLObject;
 import org.opensaml.xml.io.Unmarshaller;
 import org.opensaml.xml.io.UnmarshallerFactory;
 import org.opensaml.xml.io.UnmarshallingException;
 import org.opensaml.xml.security.x509.X509Credential;
+import org.opensaml.xml.signature.Signature;
+import org.opensaml.xml.signature.SignatureValidator;
+import org.opensaml.xml.validation.ValidationException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
+import org.wso2.carbon.CarbonConstants;
 import org.wso2.carbon.identity.application.authentication.framework.config.model.ExternalIdPConfig;
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
 import org.wso2.carbon.identity.application.authentication.framework.model.AuthenticatedUser;
@@ -50,10 +57,6 @@ import org.wso2.carbon.identity.application.common.util.IdentityApplicationConst
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.xml.sax.SAXException;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -62,13 +65,15 @@ import java.nio.charset.Charset;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import javax.servlet.http.HttpServletRequest;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
 
 public class PassiveSTSManager {
 
-    private static final String SECURITY_MANAGER_PROPERTY = Constants.XERCES_PROPERTY_PREFIX +
-            Constants.SECURITY_MANAGER_PROPERTY;
-    private static final int ENTITY_EXPANSION_LIMIT = 0;
     private static Log log = LogFactory.getLog(PassiveSTSManager.class);
+    private static Log AUDIT_LOG = CarbonConstants.AUDIT_LOG;
     private static boolean bootStrapped = false;
     private X509Credential credential = null;
 
@@ -147,6 +152,13 @@ public class PassiveSTSManager {
             throw new PassiveSTSException("SAML Assertion not found in the Response");
         }
 
+        // Validate 'Not Before' and 'Not On Or After' Conditions if they are present in the assertion.'
+        validateAssertionValidityPeriod(context, xmlObject);
+        // Validate for Audience if Audience validation is enabled in IdP Config.
+        validateAudienceRestriction(context, xmlObject);
+        //Validate the Signature if signature validation is enabled in IdP Config.
+        validateSignature(context, xmlObject);
+
         String subject = null;
         Map<String, String> attributeMap = new HashMap<String, String>();
 
@@ -200,6 +212,8 @@ public class PassiveSTSManager {
                     }
                 }
             }
+        } else {
+            throw new PassiveSTSException("Unknown Security Token. Can process only SAML 2.0 and SAML 1.0 Assertions");
         }
 
         Map<ClaimMapping, String> claimMappingStringMap = getClaimMappingsMap(attributeMap);
@@ -258,6 +272,22 @@ public class PassiveSTSManager {
                 log.warn("More than one Security Token is found in the Response");
             }
 
+            NodeList SAML2AssertionList = element.getElementsByTagNameNS(SAMLConstants.SAML20_NS, "Assertion");
+            if (SAML2AssertionList.getLength() > 1) {
+                throw new PassiveSTSException("Invalid Schema for Token Response. Multiple SAML2.0 assertions " +
+                                              "detected.");
+            }
+
+            NodeList SAML1AssertionList = element.getElementsByTagNameNS(SAMLConstants.SAML1_NS, "Assertion");
+            if (SAML1AssertionList.getLength() > 1) {
+                throw new PassiveSTSException("Invalid Schema for Token Response. Multiple SAML1.0 assertions " +
+                                              "detected.");
+            }
+
+            if (SAML2AssertionList.getLength() > 0 && SAML1AssertionList.getLength() > 0) {
+                throw new PassiveSTSException("Invalid Schema for Token Response. Multiple SAML assertions detected.");
+            }
+
             Element node = (Element) nodeList.item(0).getFirstChild();
             UnmarshallerFactory unmarshallerFactory = Configuration.getUnmarshallerFactory();
             Unmarshaller unmarshaller = unmarshallerFactory.getUnmarshaller(node);
@@ -288,5 +318,252 @@ public class PassiveSTSManager {
             results.put(claimMapping, entry.getValue());
         }
         return results;
+    }
+
+    /**
+     * Validates the 'Not Before' and 'Not On Or After' conditions of the SAML Assertion
+     *
+     * @param xmlObject parsed SAML entity
+     * @throws PassiveSTSException
+     */
+    private void validateAssertionValidityPeriod(AuthenticationContext context, XMLObject xmlObject)
+            throws PassiveSTSException {
+
+        if (log.isDebugEnabled()) {
+            log.debug("Validating SAML Assertion's 'Not Before' and 'Not On Or After' conditions.");
+        }
+
+        DateTime validFrom = null;
+        DateTime validTill = null;
+
+        if (xmlObject instanceof org.opensaml.saml1.core.Assertion) {
+            org.opensaml.saml1.core.Assertion saml1Assertion = (org.opensaml.saml1.core.Assertion) xmlObject;
+            if (saml1Assertion.getConditions() != null) {
+                validFrom = saml1Assertion.getConditions().getNotBefore();
+                validTill = saml1Assertion.getConditions().getNotOnOrAfter();
+            }
+        } else if (xmlObject instanceof org.opensaml.saml2.core.Assertion) {
+            org.opensaml.saml2.core.Assertion saml2Assertion = (org.opensaml.saml2.core.Assertion) xmlObject;
+            if (saml2Assertion.getConditions() != null) {
+                validFrom = saml2Assertion.getConditions().getNotBefore();
+                validTill = saml2Assertion.getConditions().getNotOnOrAfter();
+            }
+        } else {
+            throw new PassiveSTSException(
+                    "Unknown Security Token. Can process only SAML 1.0 and SAML 2.0 Assertions");
+        }
+
+        int clockSkewInSeconds = IdentityUtil.getClockSkewInSeconds();
+
+        if (validFrom != null && validFrom.minusSeconds(clockSkewInSeconds).isAfterNow()) {
+            throw new PassiveSTSException("Failed to meet SAML Assertion Condition 'Not Before'");
+        }
+
+        if (validTill != null && validTill.plusSeconds(clockSkewInSeconds).isBeforeNow()) {
+            throw new PassiveSTSException("Failed to meet SAML Assertion Condition 'Not On Or After'");
+        }
+
+        if (validFrom != null && validTill != null && validFrom.isAfter(validTill)) {
+            throw new PassiveSTSException(
+                    "SAML Assertion Condition 'Not Before' must be less than the value of 'Not On Or After'");
+        }
+    }
+
+    /**
+     * Validates the Audience Restriction of the SAML entity
+     *
+     * @param context   instance of AuthenticationContext
+     * @param xmlObject SAML entity
+     * @throws PassiveSTSException
+     */
+    private void validateAudienceRestriction(AuthenticationContext context, XMLObject xmlObject)
+            throws PassiveSTSException {
+
+        boolean validateAudience = true;
+        if (context.getAuthenticatorProperties().containsKey(
+                IdentityApplicationConstants.Authenticator.PassiveSTS.IS_ENABLE_ASSERTION_AUDIENCE_VALIDATION)) {
+            validateAudience = !"false".equalsIgnoreCase(context.getAuthenticatorProperties().get
+                    (IdentityApplicationConstants.Authenticator.PassiveSTS
+                             .IS_ENABLE_ASSERTION_AUDIENCE_VALIDATION));
+        }
+
+        if (validateAudience) {
+            if (log.isDebugEnabled()) {
+                log.debug("Validating SAML Assertion's Audience Restriction Condition.");
+            }
+
+            if (xmlObject instanceof org.opensaml.saml1.core.Assertion) {
+                validateAudienceRestriction(context, (org.opensaml.saml1.core.Assertion) xmlObject);
+            } else if (xmlObject instanceof org.opensaml.saml2.core.Assertion) {
+                validateAudienceRestriction(context, (org.opensaml.saml2.core.Assertion) xmlObject);
+            } else {
+                throw new PassiveSTSException(
+                        "Unknown Security Token. Can process only SAML 1.0 and SAML 2.0 Assertions");
+            }
+        }
+    }
+
+    /**
+     * Validates Audience Restriction of SAML 1.0 Assertion
+     *
+     * @param context        instance of AuthenticationContext
+     * @param saml1Assertion SAML 1.0 Assertion element
+     * @throws PassiveSTSException
+     */
+    private void validateAudienceRestriction(AuthenticationContext context,
+                                             org.opensaml.saml1.core.Assertion saml1Assertion)
+            throws PassiveSTSException {
+
+        if (saml1Assertion.getConditions() != null) {
+            List<org.opensaml.saml1.core.AudienceRestrictionCondition> audienceRestrictions =
+                    saml1Assertion.getConditions().getAudienceRestrictionConditions();
+            if (audienceRestrictions != null && !audienceRestrictions.isEmpty()) {
+                /**
+                 * Validates if the Passive STS Realm being configured for this relying party is being
+                 * included as an Audience under AudienceRestriction
+                 */
+                String intendedAudience;
+                if (context.getAuthenticatorProperties().containsKey(IdentityApplicationConstants.Authenticator
+                                                                             .PassiveSTS.REALM_ID)) {
+                    intendedAudience = context.getAuthenticatorProperties().get(IdentityApplicationConstants
+                                                                                        .Authenticator.PassiveSTS.REALM_ID);
+                } else {
+                    throw new PassiveSTSException("Cannot validate SAML Assertion Audience Restriction. Failed to" +
+                                                  " determine intended audience.");
+                }
+
+                for (org.opensaml.saml1.core.AudienceRestrictionCondition audienceRestriction : audienceRestrictions) {
+                    if (CollectionUtils.isNotEmpty(audienceRestriction.getAudiences())) {
+                        boolean audienceFound = false;
+                        for (org.opensaml.saml1.core.Audience audience : audienceRestriction.getAudiences()) {
+                            if (intendedAudience.equals(audience.getUri())) {
+                                audienceFound = true;
+                                break;
+                            }
+                        }
+                        if (!audienceFound) {
+                            throw new PassiveSTSException("SAML Assertion Audience Restriction validation failed");
+                        }
+                    } else {
+                        throw new PassiveSTSException("Cannot validate SAML Assertion Audience Restriction. " +
+                                                      "Audience Restriction does not specify Audiences.");
+                    }
+                }
+            }
+        } else {
+            throw new PassiveSTSException("SAML 1.0 Assertion doesn't contain Conditions");
+        }
+    }
+
+    /**
+     * Validates Audience Restriction of SAML 2.0 Assertion
+     *
+     * @param context        instance of AuthenticationContext
+     * @param saml2Assertion SAML 2.0 Assertion element
+     * @throws PassiveSTSException
+     */
+    private void validateAudienceRestriction(AuthenticationContext context,
+                                             org.opensaml.saml2.core.Assertion saml2Assertion)
+            throws PassiveSTSException {
+
+        if (saml2Assertion.getConditions() != null) {
+            List<org.opensaml.saml2.core.AudienceRestriction> audienceRestrictions =
+                    saml2Assertion.getConditions().getAudienceRestrictions();
+            if (audienceRestrictions != null && !audienceRestrictions.isEmpty()) {
+                /**
+                 * Validates if the Passive STS Realm being configured for this relying party is being
+                 * included as an Audience under AudienceRestriction
+                 */
+                String intendedAudience;
+                if (context.getAuthenticatorProperties().containsKey(IdentityApplicationConstants.Authenticator
+                                                                             .PassiveSTS.REALM_ID)) {
+                    intendedAudience = context.getAuthenticatorProperties().get(IdentityApplicationConstants
+                                                                                        .Authenticator.PassiveSTS.REALM_ID);
+                } else {
+                    throw new PassiveSTSException("Cannot validate SAML Assertion Audience Restriction. Failed to" +
+                                                  " determine intended audience.");
+                }
+
+                for (org.opensaml.saml2.core.AudienceRestriction audienceRestriction : audienceRestrictions) {
+                    if (CollectionUtils.isNotEmpty(audienceRestriction.getAudiences())) {
+                        boolean audienceFound = false;
+                        for (org.opensaml.saml2.core.Audience audience : audienceRestriction.getAudiences()) {
+                            if (intendedAudience.equals(audience.getAudienceURI())) {
+                                audienceFound = true;
+                                break;
+                            }
+                        }
+                        if (!audienceFound) {
+                            throw new PassiveSTSException("SAML Assertion Audience Restriction validation failed");
+                        }
+                    } else {
+                        throw new PassiveSTSException("Cannot validate SAML Assertion Audience Restriction. " +
+                                                      "Audience Restriction does not specify Audiences.");
+                    }
+                }
+            }
+        } else {
+            throw new PassiveSTSException("SAML 2.0 Assertion doesn't contain Conditions");
+        }
+    }
+
+    /**
+     * Validates the Signature of the SAML entity
+     *
+     * @param context   instance of AuthenticationContext
+     * @param xmlObject SAML entity
+     * @throws PassiveSTSException
+     */
+    private void validateSignature(AuthenticationContext context, XMLObject xmlObject) throws PassiveSTSException {
+
+        boolean validateSignature = true;
+        if (context.getAuthenticatorProperties().containsKey(
+                IdentityApplicationConstants.Authenticator.PassiveSTS.IS_ENABLE_ASSERTION_SIGNATURE_VALIDATION)) {
+            validateSignature = !"false".equalsIgnoreCase(context.getAuthenticatorProperties().get
+                    (IdentityApplicationConstants.Authenticator.PassiveSTS
+                             .IS_ENABLE_ASSERTION_AUDIENCE_VALIDATION));
+        }
+
+        if (validateSignature) {
+            if (log.isDebugEnabled()) {
+                log.debug("Validating SAML Assertion's Signature.");
+            }
+
+            if (xmlObject instanceof SignableSAMLObject) {
+                validateSignature(((SignableSAMLObject) xmlObject).getSignature());
+            } else {
+                throw new PassiveSTSException(
+                        "Unknown Security Token. Can process only SAML 1.0 and SAML 2.0 Assertions");
+            }
+        }
+    }
+
+    /**
+     * Validates the Signature
+     *
+     * @param signature signature element
+     * @throws PassiveSTSException
+     */
+    private void validateSignature(Signature signature) throws PassiveSTSException {
+
+        try {
+            SAMLSignatureProfileValidator signatureProfileValidator = new SAMLSignatureProfileValidator();
+            signatureProfileValidator.validate(signature);
+        } catch (ValidationException e) {
+            String msg = "Signature do not confirm to SAML signature profile. Possible XML Signature " +
+                         "Wrapping  Attack!";
+            AUDIT_LOG.warn(msg);
+            if (log.isDebugEnabled()) {
+                log.debug(msg, e);
+            }
+            throw new PassiveSTSException(msg, e);
+        }
+
+        try {
+            SignatureValidator validator = new SignatureValidator(credential);
+            validator.validate(signature);
+        } catch (ValidationException e) {
+            throw new PassiveSTSException("Signature validation failed for SAML Assertion", e);
+        }
     }
 }
