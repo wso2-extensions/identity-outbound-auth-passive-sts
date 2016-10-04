@@ -255,7 +255,7 @@
 
     <properties>
         <identity.framework.version>5.5.0</identity.framework.version>
-        <carbon.identity.package.export.version>${project.version}</carbon.identity.package.export.version>
+        <identity.framework.package.export.version>${project.version}</identity.framework.package.export.version>
 
         <javax.xml.parsers.import.pkg.version>[0.0.0, 1.0.0)</javax.xml.parsers.import.pkg.version>
         <opensaml2.wso2.version>2.6.4.wso2v3</opensaml2.wso2.version>
