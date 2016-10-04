@@ -116,7 +116,7 @@
                         <Export-Package>
                             !org.wso2.carbon.identity.application.authenticator.passive.sts.internal,
                             org.wso2.carbon.identity.application.authenticator.passive.sts.*;
-                            version="${carbon.identity.package.export.version}"
+                            version="${identity.framework.package.export.version}"
                         </Export-Package>
                         <DynamicImport-Package>*</DynamicImport-Package>
                     </instructions>
