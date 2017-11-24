@@ -18,6 +18,7 @@
 
 package org.wso2.carbon.identity.application.authenticator.passive.sts;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.wso2.carbon.identity.application.authentication.framework.AbstractApplicationAuthenticator;
@@ -25,18 +26,21 @@ import org.wso2.carbon.identity.application.authentication.framework.FederatedAp
 import org.wso2.carbon.identity.application.authentication.framework.config.model.ExternalIdPConfig;
 import org.wso2.carbon.identity.application.authentication.framework.context.AuthenticationContext;
 import org.wso2.carbon.identity.application.authentication.framework.exception.AuthenticationFailedException;
+import org.wso2.carbon.identity.application.authentication.framework.exception.LogoutFailedException;
 import org.wso2.carbon.identity.application.authentication.framework.util.FrameworkConstants;
 import org.wso2.carbon.identity.application.authenticator.passive.sts.exception.PassiveSTSException;
 import org.wso2.carbon.identity.application.authenticator.passive.sts.manager.PassiveSTSManager;
 import org.wso2.carbon.identity.application.authenticator.passive.sts.util.PassiveSTSConstants;
 import org.wso2.carbon.identity.application.common.util.IdentityApplicationConstants;
+import org.wso2.carbon.identity.core.util.IdentityUtil;
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.util.Map;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 public class PassiveSTSAuthenticator extends AbstractApplicationAuthenticator implements FederatedApplicationAuthenticator {
 
@@ -51,7 +55,8 @@ public class PassiveSTSAuthenticator extends AbstractApplicationAuthenticator im
             log.trace("Inside canHandle()");
         }
 
-        if (request.getParameter(PassiveSTSConstants.HTTP_PARAM_PASSIVE_STS_RESULT) != null) {
+        if (request.getParameter(PassiveSTSConstants.HTTP_PARAM_PASSIVE_STS_RESULT) != null
+                || request.getParameter(PassiveSTSConstants.HTTP_PARAM_PASSIVE_STS_LOGOUT) != null) {
             return true;
         }
 
@@ -136,10 +141,26 @@ public class PassiveSTSAuthenticator extends AbstractApplicationAuthenticator im
         String identifier = request.getParameter("sessionDataKey");
 
         if (identifier == null) {
+            if (log.isDebugEnabled()) {
+                log.debug("Context identifier: " + identifier);
+            }
             identifier = request.getParameter("wctx");
 
             if (identifier != null) {
                 // TODO SHOULD ensure that the value has not been tampered with by using a checksum, a pseudo-random value, or similar means.
+                try {
+                    return URLDecoder.decode(identifier, "UTF-8");
+                } catch (UnsupportedEncodingException e) {
+                    log.error("Exception while URL decoding the Relay State", e);
+                }
+            }
+
+            identifier = request.getParameter(PassiveSTSConstants.HTTP_PARAM_PASSIVE_STS_LOGOUT);
+
+            if (identifier != null) {
+                if (log.isDebugEnabled()) {
+                    log.debug("passive sts logout parameter: " + identifier);
+                }
                 try {
                     return URLDecoder.decode(identifier, "UTF-8");
                 } catch (UnsupportedEncodingException e) {
@@ -160,4 +181,48 @@ public class PassiveSTSAuthenticator extends AbstractApplicationAuthenticator im
     public String getName() {
         return PassiveSTSConstants.AUTHENTICATOR_NAME;
     }
+
+    @Override
+    protected void initiateLogoutRequest(HttpServletRequest request, HttpServletResponse response,
+            AuthenticationContext context) throws LogoutFailedException {
+        Map<String, String> authenticatorProperties = context.getAuthenticatorProperties();
+        String idpURL = authenticatorProperties
+                .get(IdentityApplicationConstants.Authenticator.PassiveSTS.IDENTITY_PROVIDER_URL);
+        String logOutPage;
+
+        try {
+            String callbackUrl = authenticatorProperties.get(PassiveSTSConstants.PASSIVE_STS_CALL_BACK_URL);
+            if (StringUtils.isEmpty(callbackUrl)) {
+                callbackUrl = IdentityUtil.getServerURL(FrameworkConstants.COMMONAUTH, true, true);
+            }
+            String replyUrl = callbackUrl + "?" + PassiveSTSConstants.HTTP_PARAM_PASSIVE_STS_LOGOUT + "=" + context
+                    .getContextIdentifier();
+            logOutPage = buildLogoutRequest(idpURL, context.getContextIdentifier(),
+                    context.getAuthenticatorProperties(), PassiveSTSConstants.HTTP_PARAM_PASSIVE_STS_WSIGNOUT,
+                    replyUrl);
+        } catch (PassiveSTSException e) {
+            throw new LogoutFailedException("Exception while building the WS-Federation logout request", e);
+        }
+
+        try {
+            response.sendRedirect(logOutPage);
+        } catch (IOException e) {
+            throw new LogoutFailedException("Exception while sending to the logout page", e);
+        }
+    }
+
+    private String buildLogoutRequest(String loginPage, String contextIdentifier,
+            Map<String, String> authenticationProperties, String action, String replyUrl) throws PassiveSTSException {
+        String realm = authenticationProperties.get(PassiveSTSConstants.REALM_ID);
+        String redirectUrl = loginPage + "?wa=" + action + "&wreply=" + replyUrl + "&wtrealm=" + realm;
+
+        try {
+            redirectUrl = redirectUrl + "&wctx=" + URLEncoder.encode(contextIdentifier, "UTF-8").trim();
+        } catch (UnsupportedEncodingException e) {
+            throw new PassiveSTSException("Error occurred while url encoding WCTX: " + contextIdentifier, e);
+        }
+        return redirectUrl;
+    }
+
+
 }
