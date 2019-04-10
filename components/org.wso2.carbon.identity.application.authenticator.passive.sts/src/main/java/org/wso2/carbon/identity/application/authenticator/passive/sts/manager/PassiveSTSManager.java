@@ -312,9 +312,16 @@ public class PassiveSTSManager {
         Map<ClaimMapping, String> results = new HashMap<ClaimMapping, String>();
         for (Map.Entry<String, String> entry : userAttributes.entrySet()) {
             ClaimMapping claimMapping = new ClaimMapping();
-            Claim claim = new Claim();
-            claim.setClaimUri(entry.getKey());
-            claimMapping.setRemoteClaim(claim);
+
+            Claim localClaim = new Claim();
+            localClaim.setClaimUri(entry.getKey());
+
+            Claim remoteClaim = new Claim();
+            remoteClaim.setClaimUri(entry.getKey());
+
+            claimMapping.setLocalClaim(localClaim);
+            claimMapping.setRemoteClaim(remoteClaim);
+
             results.put(claimMapping, entry.getValue());
         }
         return results;
