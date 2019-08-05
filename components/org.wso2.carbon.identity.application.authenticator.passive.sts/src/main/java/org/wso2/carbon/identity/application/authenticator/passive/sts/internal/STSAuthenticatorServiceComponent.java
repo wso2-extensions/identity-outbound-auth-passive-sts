@@ -20,17 +20,19 @@ package org.wso2.carbon.identity.application.authenticator.passive.sts.internal;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.osgi.service.component.ComponentContext;
+import org.osgi.service.component.annotations.Activate;
+import org.osgi.service.component.annotations.Component;
+import org.osgi.service.component.annotations.Deactivate;
 import org.wso2.carbon.identity.application.authentication.framework.ApplicationAuthenticator;
 import org.wso2.carbon.identity.application.authenticator.passive.sts.PassiveSTSAuthenticator;
 
 
-/**
- * @scr.component name="identity.application.authenticator.passive.sts.component" immediate="true"
- */
+@Component(name="identity.application.authenticator.passive.sts.component", immediate=true)
 public class STSAuthenticatorServiceComponent {
 
     private static Log log = LogFactory.getLog(STSAuthenticatorServiceComponent.class);
 
+    @Activate
     protected void activate(ComponentContext ctxt) {
         try {
             PassiveSTSAuthenticator stsAuthenticator = new PassiveSTSAuthenticator();
@@ -44,6 +46,7 @@ public class STSAuthenticatorServiceComponent {
         }
     }
 
+    @Deactivate
     protected void deactivate() {
         if (log.isDebugEnabled()) {
             log.debug("STS Authenticator bundle is deactivated");
