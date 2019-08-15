@@ -46,7 +46,7 @@ public class PassiveSTSAuthenticator extends AbstractApplicationAuthenticator im
 
     private static final long serialVersionUID = -8097512332218044090L;
 
-    private static Log log = LogFactory.getLog(PassiveSTSAuthenticator.class);
+    private static final Log log = LogFactory.getLog(PassiveSTSAuthenticator.class);
 
     @Override
     public boolean canHandle(HttpServletRequest request) {
