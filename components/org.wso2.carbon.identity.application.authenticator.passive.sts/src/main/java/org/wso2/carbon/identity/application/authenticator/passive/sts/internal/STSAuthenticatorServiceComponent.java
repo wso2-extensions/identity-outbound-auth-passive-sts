@@ -30,7 +30,7 @@ import org.wso2.carbon.identity.application.authenticator.passive.sts.PassiveSTS
 @Component(name="identity.application.authenticator.passive.sts.component", immediate=true)
 public class STSAuthenticatorServiceComponent {
 
-    private static Log log = LogFactory.getLog(STSAuthenticatorServiceComponent.class);
+    private static final Log log = LogFactory.getLog(STSAuthenticatorServiceComponent.class);
 
     @Activate
     protected void activate(ComponentContext ctxt) {

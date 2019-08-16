@@ -72,7 +72,7 @@ import javax.xml.parsers.ParserConfigurationException;
 
 public class PassiveSTSManager {
 
-    private static Log log = LogFactory.getLog(PassiveSTSManager.class);
+    private static final Log log = LogFactory.getLog(PassiveSTSManager.class);
     private static Log AUDIT_LOG = CarbonConstants.AUDIT_LOG;
     private static boolean bootStrapped = false;
     private X509Credential credential = null;

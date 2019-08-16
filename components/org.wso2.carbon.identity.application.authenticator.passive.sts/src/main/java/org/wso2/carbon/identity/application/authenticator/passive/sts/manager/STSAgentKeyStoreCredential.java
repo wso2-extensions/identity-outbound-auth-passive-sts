@@ -32,7 +32,7 @@ import java.security.cert.X509Certificate;
 
 public class STSAgentKeyStoreCredential implements STSAgentCredential {
 
-    private static Log log = LogFactory.getLog(STSAgentKeyStoreCredential.class);
+    private static final Log log = LogFactory.getLog(STSAgentKeyStoreCredential.class);
 
     private static PublicKey publicKey = null;
     private static PrivateKey privateKey = null;
