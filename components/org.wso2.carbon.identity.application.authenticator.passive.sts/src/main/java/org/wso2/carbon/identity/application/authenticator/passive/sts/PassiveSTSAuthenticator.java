@@ -31,6 +31,7 @@ import org.wso2.carbon.identity.application.authentication.framework.util.Framew
 import org.wso2.carbon.identity.application.authenticator.passive.sts.exception.PassiveSTSException;
 import org.wso2.carbon.identity.application.authenticator.passive.sts.manager.PassiveSTSManager;
 import org.wso2.carbon.identity.application.authenticator.passive.sts.util.PassiveSTSConstants;
+import org.wso2.carbon.identity.application.common.model.Property;
 import org.wso2.carbon.identity.application.common.util.IdentityApplicationConstants;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 
@@ -38,6 +39,8 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -209,6 +212,74 @@ public class PassiveSTSAuthenticator extends AbstractApplicationAuthenticator im
         } catch (IOException e) {
             throw new LogoutFailedException("Exception while sending to the logout page", e);
         }
+    }
+
+    /**
+     * Get Configuration Properties.
+     */
+    @Override
+    public List<Property> getConfigurationProperties() {
+
+        List<Property> configProperties = new ArrayList<>();
+        Property realm = new Property();
+        realm.setName(IdentityApplicationConstants.Authenticator.PassiveSTS.REALM_ID);
+        realm.setDisplayName("Passive STS Realm");
+        realm.setRequired(true);
+        realm.setDescription("Enter passive sts realm value");
+        realm.setType("string");
+        realm.setDisplayOrder(1);
+        configProperties.add(realm);
+
+        Property url = new Property();
+        url.setName(IdentityApplicationConstants.Authenticator.PassiveSTS.REALM_ID);
+        url.setDisplayName("Passive STS URL");
+        url.setRequired(true);
+        url.setDescription("Enter passive sts URL value");
+        url.setType("string");
+        url.setDisplayOrder(2);
+        configProperties.add(url);
+
+        Property userIdLocation = new Property();
+        userIdLocation.setName(IdentityApplicationConstants.Authenticator.PassiveSTS.IS_USER_ID_IN_CLAIMS);
+        userIdLocation.setDisplayName("Passive STS User ID Location");
+        userIdLocation.setRequired(false);
+        userIdLocation.setDescription("Specifies the location to find the user identifier in the SAML2 assertion");
+        userIdLocation.setType("boolean");
+        userIdLocation.setDisplayOrder(3);
+        configProperties.add(userIdLocation);
+
+        Property validateAssertionSig = new Property();
+        validateAssertionSig.setName(IdentityApplicationConstants.Authenticator.PassiveSTS
+                .IS_ENABLE_ASSERTION_SIGNATURE_VALIDATION);
+        validateAssertionSig.setDisplayName("Enable SAML Assertion Signature Validation");
+        validateAssertionSig.setRequired(false);
+        validateAssertionSig.setDescription("Specifies if SAML Assertion Signature should be validated");
+        validateAssertionSig.setType("boolean");
+        validateAssertionSig.setDefaultValue("true");
+        validateAssertionSig.setDisplayOrder(4);
+        configProperties.add(validateAssertionSig);
+
+        Property validateAssertionAud = new Property();
+        validateAssertionAud.setName(IdentityApplicationConstants.Authenticator.PassiveSTS
+                .IS_ENABLE_ASSERTION_AUDIENCE_VALIDATION);
+        validateAssertionAud.setDisplayName("Enable SAML Assertion Audience Validation");
+        validateAssertionAud.setRequired(false);
+        validateAssertionAud.setDescription("Specifies if SAML Assertion Audience should be validated");
+        validateAssertionAud.setType("boolean");
+        validateAssertionSig.setDefaultValue("true");
+        validateAssertionAud.setDisplayOrder(5);
+        configProperties.add(validateAssertionAud);
+
+        Property queryParams = new Property();
+        queryParams.setName("commonAuthQueryParams");
+        queryParams.setDisplayName("Additional Query Parameters");
+        queryParams.setRequired(false);
+        queryParams.setDescription("Additional query parameters. e.g: paramName1=value1");
+        queryParams.setType("string");
+        queryParams.setDisplayOrder(6);
+        configProperties.add(queryParams);
+
+        return configProperties;
     }
 
     private String buildLogoutRequest(String loginPage, String contextIdentifier,
