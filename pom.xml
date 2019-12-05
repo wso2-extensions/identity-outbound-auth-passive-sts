@@ -27,7 +27,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.wso2.carbon.identity.outbound.auth.sts.passive</groupId>
     <artifactId>identity-application-auth-passive-sts</artifactId>
-    <version>5.3.4-SNAPSHOT</version>
+    <version>5.3.5-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>WSO2 Carbon - Passive STS Application Authenticator</name>
     <description>
