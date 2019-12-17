@@ -265,7 +265,7 @@
     </dependencyManagement>
 
     <properties>
-        <identity.framework.version>5.15.0</identity.framework.version>
+        <identity.framework.version>5.15.56-SNAPSHOT</identity.framework.version>
         <identity.framework.package.export.version>${project.version}</identity.framework.package.export.version>
 
         <javax.xml.parsers.import.pkg.version>[0.0.0, 1.0.0)</javax.xml.parsers.import.pkg.version>
