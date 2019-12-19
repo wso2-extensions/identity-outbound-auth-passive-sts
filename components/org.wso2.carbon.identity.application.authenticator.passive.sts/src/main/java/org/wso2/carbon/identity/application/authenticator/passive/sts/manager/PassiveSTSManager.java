@@ -22,24 +22,23 @@ import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.joda.time.DateTime;
-import org.opensaml.Configuration;
-import org.opensaml.DefaultBootstrap;
-import org.opensaml.common.SignableSAMLObject;
-import org.opensaml.common.xml.SAMLConstants;
-import org.opensaml.saml1.core.Attribute;
-import org.opensaml.saml1.core.AttributeStatement;
-import org.opensaml.saml1.core.NameIdentifier;
-import org.opensaml.saml1.core.Subject;
-import org.opensaml.security.SAMLSignatureProfileValidator;
-import org.opensaml.xml.ConfigurationException;
-import org.opensaml.xml.XMLObject;
-import org.opensaml.xml.io.Unmarshaller;
-import org.opensaml.xml.io.UnmarshallerFactory;
-import org.opensaml.xml.io.UnmarshallingException;
-import org.opensaml.xml.security.x509.X509Credential;
-import org.opensaml.xml.signature.Signature;
-import org.opensaml.xml.signature.SignatureValidator;
-import org.opensaml.xml.validation.ValidationException;
+import org.opensaml.core.xml.config.XMLObjectProviderRegistrySupport;
+import org.opensaml.saml.common.SignableSAMLObject;
+import org.opensaml.saml.common.xml.SAMLConstants;
+import org.opensaml.saml.saml1.core.Attribute;
+import org.opensaml.saml.saml1.core.AttributeStatement;
+import org.opensaml.saml.saml1.core.NameIdentifier;
+import org.opensaml.saml.saml1.core.Subject;
+import org.opensaml.saml.security.impl.SAMLSignatureProfileValidator;
+import org.opensaml.core.config.InitializationException;
+import org.opensaml.core.xml.XMLObject;
+import org.opensaml.core.xml.io.Unmarshaller;
+import org.opensaml.core.xml.io.UnmarshallerFactory;
+import org.opensaml.core.xml.io.UnmarshallingException;
+import org.opensaml.security.x509.X509Credential;
+import org.opensaml.xmlsec.signature.Signature;
+import org.opensaml.xmlsec.signature.support.SignatureValidator;
+import org.opensaml.xmlsec.signature.support.SignatureException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
@@ -55,6 +54,7 @@ import org.wso2.carbon.identity.application.common.model.Claim;
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.util.IdentityApplicationConstants;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
+import org.wso2.carbon.identity.saml.common.util.SAMLInitializer;
 import org.xml.sax.SAXException;
 
 import java.io.ByteArrayInputStream;
@@ -100,10 +100,10 @@ public class PassiveSTSManager {
         /* Initializing the OpenSAML library */
         if (!bootStrapped) {
             try {
-                DefaultBootstrap.bootstrap();
+                SAMLInitializer.doBootstrap();
                 bootStrapped = true;
-            } catch (ConfigurationException e) {
-                log.error("Error in bootstrapping the OpenSAML2 library", e);
+            } catch (InitializationException e) {
+                log.error("Error in bootstrapping the OpenSAML3 library", e);
             }
         }
     }
@@ -136,7 +136,7 @@ public class PassiveSTSManager {
 
     /**
      * @param request
-     * @param externalIdPConfig
+     * @param context
      * @throws PassiveSTSException
      */
     public void processResponse(HttpServletRequest request, AuthenticationContext context) throws PassiveSTSException {
@@ -162,8 +162,8 @@ public class PassiveSTSManager {
         String subject = null;
         Map<String, String> attributeMap = new HashMap<String, String>();
 
-        if (xmlObject instanceof org.opensaml.saml1.core.Assertion) {
-            org.opensaml.saml1.core.Assertion assertion = (org.opensaml.saml1.core.Assertion) xmlObject;
+        if (xmlObject instanceof org.opensaml.saml.saml1.core.Assertion) {
+            org.opensaml.saml.saml1.core.Assertion assertion = (org.opensaml.saml.saml1.core.Assertion) xmlObject;
             if (CollectionUtils.isNotEmpty(assertion.getAuthenticationStatements())) {
                 Subject subjectElem = assertion.getAuthenticationStatements().get(0).getSubject();
 
@@ -193,17 +193,17 @@ public class PassiveSTSManager {
                     }
                 }
             }
-        } else if (xmlObject instanceof org.opensaml.saml2.core.Assertion) {
+        } else if (xmlObject instanceof org.opensaml.saml.saml2.core.Assertion) {
 
-            org.opensaml.saml2.core.Assertion assertion = (org.opensaml.saml2.core.Assertion) xmlObject;
+            org.opensaml.saml.saml2.core.Assertion assertion = (org.opensaml.saml.saml2.core.Assertion) xmlObject;
 
             if (assertion.getSubject() != null && assertion.getSubject().getNameID() != null) {
                 subject = assertion.getSubject().getNameID().getValue();
             }
 
-            for (org.opensaml.saml2.core.AttributeStatement statement : assertion.getAttributeStatements()) {
-                List<org.opensaml.saml2.core.Attribute> attributes = statement.getAttributes();
-                for (org.opensaml.saml2.core.Attribute attribute : attributes) {
+            for (org.opensaml.saml.saml2.core.AttributeStatement statement : assertion.getAttributeStatements()) {
+                List<org.opensaml.saml.saml2.core.Attribute> attributes = statement.getAttributes();
+                for (org.opensaml.saml.saml2.core.Attribute attribute : attributes) {
                     String attributeUri = attribute.getName();
                     List<XMLObject> xmlObjects = attribute.getAttributeValues();
                     for (XMLObject object : xmlObjects) {
@@ -289,7 +289,7 @@ public class PassiveSTSManager {
             }
 
             Element node = (Element) nodeList.item(0).getFirstChild();
-            UnmarshallerFactory unmarshallerFactory = Configuration.getUnmarshallerFactory();
+            UnmarshallerFactory unmarshallerFactory = XMLObjectProviderRegistrySupport.getUnmarshallerFactory();
             Unmarshaller unmarshaller = unmarshallerFactory.getUnmarshaller(node);
             return unmarshaller.unmarshall(node);
         } catch (ParserConfigurationException e) {
@@ -343,14 +343,14 @@ public class PassiveSTSManager {
         DateTime validFrom = null;
         DateTime validTill = null;
 
-        if (xmlObject instanceof org.opensaml.saml1.core.Assertion) {
-            org.opensaml.saml1.core.Assertion saml1Assertion = (org.opensaml.saml1.core.Assertion) xmlObject;
+        if (xmlObject instanceof org.opensaml.saml.saml1.core.Assertion) {
+            org.opensaml.saml.saml1.core.Assertion saml1Assertion = (org.opensaml.saml.saml1.core.Assertion) xmlObject;
             if (saml1Assertion.getConditions() != null) {
                 validFrom = saml1Assertion.getConditions().getNotBefore();
                 validTill = saml1Assertion.getConditions().getNotOnOrAfter();
             }
-        } else if (xmlObject instanceof org.opensaml.saml2.core.Assertion) {
-            org.opensaml.saml2.core.Assertion saml2Assertion = (org.opensaml.saml2.core.Assertion) xmlObject;
+        } else if (xmlObject instanceof org.opensaml.saml.saml2.core.Assertion) {
+            org.opensaml.saml.saml2.core.Assertion saml2Assertion = (org.opensaml.saml.saml2.core.Assertion) xmlObject;
             if (saml2Assertion.getConditions() != null) {
                 validFrom = saml2Assertion.getConditions().getNotBefore();
                 validTill = saml2Assertion.getConditions().getNotOnOrAfter();
@@ -399,10 +399,10 @@ public class PassiveSTSManager {
                 log.debug("Validating SAML Assertion's Audience Restriction Condition.");
             }
 
-            if (xmlObject instanceof org.opensaml.saml1.core.Assertion) {
-                validateAudienceRestriction(context, (org.opensaml.saml1.core.Assertion) xmlObject);
-            } else if (xmlObject instanceof org.opensaml.saml2.core.Assertion) {
-                validateAudienceRestriction(context, (org.opensaml.saml2.core.Assertion) xmlObject);
+            if (xmlObject instanceof org.opensaml.saml.saml1.core.Assertion) {
+                validateAudienceRestriction(context, (org.opensaml.saml.saml1.core.Assertion) xmlObject);
+            } else if (xmlObject instanceof org.opensaml.saml.saml2.core.Assertion) {
+                validateAudienceRestriction(context, (org.opensaml.saml.saml2.core.Assertion) xmlObject);
             } else {
                 throw new PassiveSTSException(
                         "Unknown Security Token. Can process only SAML 1.0 and SAML 2.0 Assertions");
@@ -418,11 +418,11 @@ public class PassiveSTSManager {
      * @throws PassiveSTSException
      */
     private void validateAudienceRestriction(AuthenticationContext context,
-                                             org.opensaml.saml1.core.Assertion saml1Assertion)
+                                             org.opensaml.saml.saml1.core.Assertion saml1Assertion)
             throws PassiveSTSException {
 
         if (saml1Assertion.getConditions() != null) {
-            List<org.opensaml.saml1.core.AudienceRestrictionCondition> audienceRestrictions =
+            List<org.opensaml.saml.saml1.core.AudienceRestrictionCondition> audienceRestrictions =
                     saml1Assertion.getConditions().getAudienceRestrictionConditions();
             if (audienceRestrictions != null && !audienceRestrictions.isEmpty()) {
                 /**
@@ -439,10 +439,10 @@ public class PassiveSTSManager {
                                                   " determine intended audience.");
                 }
 
-                for (org.opensaml.saml1.core.AudienceRestrictionCondition audienceRestriction : audienceRestrictions) {
+                for (org.opensaml.saml.saml1.core.AudienceRestrictionCondition audienceRestriction : audienceRestrictions) {
                     if (CollectionUtils.isNotEmpty(audienceRestriction.getAudiences())) {
                         boolean audienceFound = false;
-                        for (org.opensaml.saml1.core.Audience audience : audienceRestriction.getAudiences()) {
+                        for (org.opensaml.saml.saml1.core.Audience audience : audienceRestriction.getAudiences()) {
                             if (intendedAudience.equals(audience.getUri())) {
                                 audienceFound = true;
                                 break;
@@ -470,11 +470,11 @@ public class PassiveSTSManager {
      * @throws PassiveSTSException
      */
     private void validateAudienceRestriction(AuthenticationContext context,
-                                             org.opensaml.saml2.core.Assertion saml2Assertion)
+                                             org.opensaml.saml.saml2.core.Assertion saml2Assertion)
             throws PassiveSTSException {
 
         if (saml2Assertion.getConditions() != null) {
-            List<org.opensaml.saml2.core.AudienceRestriction> audienceRestrictions =
+            List<org.opensaml.saml.saml2.core.AudienceRestriction> audienceRestrictions =
                     saml2Assertion.getConditions().getAudienceRestrictions();
             if (audienceRestrictions != null && !audienceRestrictions.isEmpty()) {
                 /**
@@ -491,10 +491,10 @@ public class PassiveSTSManager {
                                                   " determine intended audience.");
                 }
 
-                for (org.opensaml.saml2.core.AudienceRestriction audienceRestriction : audienceRestrictions) {
+                for (org.opensaml.saml.saml2.core.AudienceRestriction audienceRestriction : audienceRestrictions) {
                     if (CollectionUtils.isNotEmpty(audienceRestriction.getAudiences())) {
                         boolean audienceFound = false;
-                        for (org.opensaml.saml2.core.Audience audience : audienceRestriction.getAudiences()) {
+                        for (org.opensaml.saml.saml2.core.Audience audience : audienceRestriction.getAudiences()) {
                             if (intendedAudience.equals(audience.getAudienceURI())) {
                                 audienceFound = true;
                                 break;
@@ -556,7 +556,7 @@ public class PassiveSTSManager {
         try {
             SAMLSignatureProfileValidator signatureProfileValidator = new SAMLSignatureProfileValidator();
             signatureProfileValidator.validate(signature);
-        } catch (ValidationException e) {
+        } catch (SignatureException e) {
             String msg = "Signature do not confirm to SAML signature profile. Possible XML Signature " +
                          "Wrapping  Attack!";
             AUDIT_LOG.warn(msg);
@@ -567,9 +567,8 @@ public class PassiveSTSManager {
         }
 
         try {
-            SignatureValidator validator = new SignatureValidator(credential);
-            validator.validate(signature);
-        } catch (ValidationException e) {
+            SignatureValidator.validate(signature, credential);
+        } catch (SignatureException e) {
             throw new PassiveSTSException("Signature validation failed for SAML Assertion", e);
         }
     }

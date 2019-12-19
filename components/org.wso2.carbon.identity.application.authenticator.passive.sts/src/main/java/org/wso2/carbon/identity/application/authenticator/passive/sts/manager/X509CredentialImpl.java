@@ -19,10 +19,10 @@
 package org.wso2.carbon.identity.application.authenticator.passive.sts.manager;
 
 import org.apache.commons.collections.CollectionUtils;
-import org.opensaml.xml.security.credential.Credential;
-import org.opensaml.xml.security.credential.CredentialContextSet;
-import org.opensaml.xml.security.credential.UsageType;
-import org.opensaml.xml.security.x509.X509Credential;
+import org.opensaml.security.credential.Credential;
+import org.opensaml.security.credential.CredentialContextSet;
+import org.opensaml.security.credential.UsageType;
+import org.opensaml.security.x509.X509Credential;
 import org.wso2.carbon.identity.application.authenticator.passive.sts.exception.PassiveSTSException;
 
 import javax.crypto.SecretKey;
@@ -81,7 +81,7 @@ public class X509CredentialImpl implements X509Credential {
     }
 
     @Override
-    public CredentialContextSet getCredentalContextSet() {
+    public CredentialContextSet getCredentialContextSet() {
         // TODO Auto-generated method stub
         return null;
     }

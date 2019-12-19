@@ -43,6 +43,16 @@
         <dependency>
             <groupId>org.wso2.carbon.identity.framework</groupId>
             <artifactId>org.wso2.carbon.identity.base</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.opensaml</groupId>
+                    <artifactId>opensaml</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.opensaml</groupId>
+                    <artifactId>opensaml1</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.wso2.carbon.identity.framework</groupId>
@@ -59,6 +69,20 @@
         <dependency>
             <groupId>org.wso2.carbon.identity.framework</groupId>
             <artifactId>org.wso2.carbon.identity.application.authentication.framework</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.opensaml</groupId>
+                    <artifactId>opensaml</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.opensaml</groupId>
+                    <artifactId>opensaml1</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.wso2.carbon.identity.saml.common</groupId>
+            <artifactId>org.wso2.carbon.identity.saml.common.util</artifactId>
         </dependency>
         <dependency>
             <groupId>org.wso2.orbit.org.opensaml</groupId>
@@ -91,6 +115,7 @@
                             org.apache.commons.logging; version="${commons-logging.osgi.version.range}",
                             org.apache.xerces.util; resolution:=optional,
 
+                            org.wso2.carbon.identity.saml.common.util.*; version="${saml.common.util.version.range}",
                             org.opensaml.*; version="${opensaml2.wso2.osgi.version.range}",
 
                             org.osgi.framework; version="${osgi.framework.imp.pkg.version.range}",
@@ -104,6 +129,8 @@
                             version="${carbon.identity.package.import.version.range}",
                             org.wso2.carbon.identity.application.common.util;
                             version="${carbon.identity.package.import.version.range}",
+
+                            org.wso2.carbon.identity.core.util; version="${carbon.identity.package.import.version.range}",
 
                             org.wso2.carbon.ui; version="${carbon.kernel.package.import.version.range}",
 
