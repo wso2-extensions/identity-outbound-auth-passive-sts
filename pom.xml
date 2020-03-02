@@ -27,7 +27,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.wso2.carbon.identity.outbound.auth.sts.passive</groupId>
     <artifactId>identity-application-auth-passive-sts</artifactId>
-    <version>5.4.0-SNAPSHOT</version>
+    <version>5.4.0</version>
     <packaging>pom</packaging>
     <name>WSO2 Carbon - Passive STS Application Authenticator</name>
     <description>
@@ -39,7 +39,7 @@
         <url>https://github.com/wso2-extensions/identity-outbound-auth-passive-sts.git</url>
         <developerConnection>scm:git:https://github.com/wso2-extensions/identity-outbound-auth-passive-sts.git</developerConnection>
         <connection>scm:git:https://github.com/wso2-extensions/identity-outbound-auth-passive-sts.git</connection>
-        <tag>HEAD</tag>
+        <tag>v5.4.0</tag>
     </scm>
 
     <repositories>
