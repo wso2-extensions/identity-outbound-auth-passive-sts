@@ -231,7 +231,7 @@ public class PassiveSTSAuthenticator extends AbstractApplicationAuthenticator im
         configProperties.add(realm);
 
         Property url = new Property();
-        url.setName(IdentityApplicationConstants.Authenticator.PassiveSTS.REALM_ID);
+        url.setName(IdentityApplicationConstants.Authenticator.PassiveSTS.IDENTITY_PROVIDER_URL);
         url.setDisplayName("Passive STS URL");
         url.setRequired(true);
         url.setDescription("Enter passive sts URL value");
