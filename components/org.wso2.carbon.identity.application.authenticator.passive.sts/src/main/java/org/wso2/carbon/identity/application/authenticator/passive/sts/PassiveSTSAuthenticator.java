@@ -34,6 +34,8 @@ import org.wso2.carbon.identity.application.authenticator.passive.sts.util.Passi
 import org.wso2.carbon.identity.application.authenticator.passive.sts.util.PassiveSTSErrorConstants.ErrorMessages;
 import org.wso2.carbon.identity.application.common.model.Property;
 import org.wso2.carbon.identity.application.common.util.IdentityApplicationConstants;
+import org.wso2.carbon.identity.core.ServiceURLBuilder;
+import org.wso2.carbon.identity.core.URLBuilderException;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 
 import java.io.IOException;
@@ -203,7 +205,8 @@ public class PassiveSTSAuthenticator extends AbstractApplicationAuthenticator im
         try {
             String callbackUrl = authenticatorProperties.get(PassiveSTSConstants.PASSIVE_STS_CALL_BACK_URL);
             if (StringUtils.isEmpty(callbackUrl)) {
-                callbackUrl = IdentityUtil.getServerURL(FrameworkConstants.COMMONAUTH, true, true);
+                callbackUrl = ServiceURLBuilder.create().addPath(FrameworkConstants.COMMONAUTH).build()
+                        .getAbsolutePublicURL();
             }
             String replyUrl = callbackUrl + "?" + PassiveSTSConstants.HTTP_PARAM_PASSIVE_STS_LOGOUT + "=" + context
                     .getContextIdentifier();
@@ -212,6 +215,8 @@ public class PassiveSTSAuthenticator extends AbstractApplicationAuthenticator im
                     replyUrl);
         } catch (PassiveSTSException e) {
             throw new LogoutFailedException("Exception while building the WS-Federation logout request", e);
+        } catch (URLBuilderException e) {
+            throw new RuntimeException("Error occurred while building URL.", e);
         }
 
         try {
