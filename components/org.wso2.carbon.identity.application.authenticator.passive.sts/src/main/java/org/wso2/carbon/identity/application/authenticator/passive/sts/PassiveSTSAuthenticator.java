@@ -31,6 +31,7 @@ import org.wso2.carbon.identity.application.authentication.framework.util.Framew
 import org.wso2.carbon.identity.application.authenticator.passive.sts.exception.PassiveSTSException;
 import org.wso2.carbon.identity.application.authenticator.passive.sts.manager.PassiveSTSManager;
 import org.wso2.carbon.identity.application.authenticator.passive.sts.util.PassiveSTSConstants;
+import org.wso2.carbon.identity.application.authenticator.passive.sts.util.PassiveSTSErrorConstants.ErrorMessages;
 import org.wso2.carbon.identity.application.common.model.Property;
 import org.wso2.carbon.identity.application.common.util.IdentityApplicationConstants;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
@@ -42,6 +43,7 @@ import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -79,8 +81,9 @@ public class PassiveSTSAuthenticator extends AbstractApplicationAuthenticator im
         try {
             loginPage = new PassiveSTSManager(externalIdPConfig).buildRequest(request, idpURL, context.getContextIdentifier(), context.getAuthenticatorProperties());
         } catch (PassiveSTSException e) {
-            log.error("Exception while building the WS-Federation request", e);
-            throw new AuthenticationFailedException(e.getMessage(), e);
+            log.error(ErrorMessages.BUILDING_THE_WS_FEDERATION_REQUEST_FAILED.getMessage(), e);
+            throw new AuthenticationFailedException(ErrorMessages.BUILDING_THE_WS_FEDERATION_REQUEST_FAILED.getCode(),
+                    e.getMessage(), e);
         }
 
         try {
@@ -107,8 +110,8 @@ public class PassiveSTSAuthenticator extends AbstractApplicationAuthenticator im
 
             response.sendRedirect(loginPage);
         } catch (IOException e) {
-            log.error("Exception while sending to the login page", e);
-            throw new AuthenticationFailedException(e.getMessage(), e);
+            log.error(ErrorMessages.IO_ERROR.getMessage(), e);
+            throw new AuthenticationFailedException(ErrorMessages.IO_ERROR.getCode(), e.getMessage(), e);
         }
         return;
     }
@@ -124,12 +127,16 @@ public class PassiveSTSAuthenticator extends AbstractApplicationAuthenticator im
             try {
                 new PassiveSTSManager(externalIdPConfig).processResponse(request, context);
             } catch (PassiveSTSException e) {
-                log.error("Exception while processing WS-Federation response", e);
-                throw new AuthenticationFailedException(e.getMessage(), context.getSubject(), e);
+                log.error(ErrorMessages.PROCESSING_WS_FEDERATION_RESPONSE_FAILED.getMessage(), e);
+                throw new AuthenticationFailedException(
+                        ErrorMessages.PROCESSING_WS_FEDERATION_RESPONSE_FAILED.getCode(), e.getMessage(),
+                        context.getSubject(), e);
             }
         } else {
-            log.error("wresult can not be found in request");
-            throw new AuthenticationFailedException("wresult can not be found in request", context.getSubject());
+            log.error(ErrorMessages.WRESULT_CAN_NOT_BE_FOUND_IN_REQUEST.getMessage());
+            throw new AuthenticationFailedException(ErrorMessages.WRESULT_CAN_NOT_BE_FOUND_IN_REQUEST.getCode(),
+                    ErrorMessages.WRESULT_CAN_NOT_BE_FOUND_IN_REQUEST.getMessage(),
+                    context.getSubject());
         }
 
     }
