@@ -53,6 +53,8 @@ import org.wso2.carbon.identity.application.authenticator.passive.sts.util.Passi
 import org.wso2.carbon.identity.application.common.model.Claim;
 import org.wso2.carbon.identity.application.common.model.ClaimMapping;
 import org.wso2.carbon.identity.application.common.util.IdentityApplicationConstants;
+import org.wso2.carbon.identity.core.ServiceURLBuilder;
+import org.wso2.carbon.identity.core.URLBuilderException;
 import org.wso2.carbon.identity.core.util.IdentityUtil;
 import org.wso2.carbon.identity.saml.common.util.SAMLInitializer;
 import org.xml.sax.SAXException;
@@ -122,14 +124,18 @@ public class PassiveSTSManager {
                                String contextIdentifier, Map<String, String> authenticationProperties)
             throws PassiveSTSException {
 
-        String replyUrl = IdentityUtil.getServerURL(FrameworkConstants.COMMONAUTH, true, true);
+        String redirectUrl;
         String action = "wsignin1.0";
         String realm = authenticationProperties.get(PassiveSTSConstants.REALM_ID);
-        String redirectUrl = loginPage + "?wa=" + action + "&wreply=" + replyUrl + "&wtrealm=" + realm;
         try {
-            redirectUrl = redirectUrl + "&wctx=" + URLEncoder.encode(contextIdentifier, "UTF-8").trim();
+            String replyUrl = ServiceURLBuilder.create().addPath(FrameworkConstants.COMMONAUTH).build()
+                    .getAbsolutePublicURL();
+            redirectUrl = FrameworkUtils.appendQueryParamsStringToUrl(loginPage, "wa=" + action + "&wreply=" +
+                    replyUrl + "&wtrealm=" + realm + "&wctx=" + URLEncoder.encode(contextIdentifier, "UTF-8").trim());
         } catch (UnsupportedEncodingException e) {
             throw new PassiveSTSException("Error occurred while url encoding WCTX ", e);
+        } catch (URLBuilderException e) {
+            throw new RuntimeException("Error occurred while building URL.", e);
         }
         return redirectUrl;
     }
