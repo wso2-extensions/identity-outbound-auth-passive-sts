@@ -27,7 +27,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.wso2.carbon.identity.outbound.auth.sts.passive</groupId>
     <artifactId>identity-application-auth-passive-sts</artifactId>
-    <version>5.5.1-SNAPSHOT</version>
+    <version>5.5.2-SNAPSHOT</version>
     <packaging>pom</packaging>
     <name>WSO2 Carbon - Passive STS Application Authenticator</name>
     <description>
@@ -202,7 +202,7 @@
         <joda.version>2.8.2</joda.version>
         <joda.wso2.version>2.8.2.wso2v1</joda.wso2.version>
         <joda.wso2.osgi.version.range>[2.8.2,3.0.0)</joda.wso2.osgi.version.range>
-        <carbon.identity.package.import.version.range>[5.15.0, 6.0.0)</carbon.identity.package.import.version.range>
+        <carbon.identity.package.import.version.range>[5.15.0, 8.0.0)</carbon.identity.package.import.version.range>
         <osgi.service.component.imp.pkg.version.range>[1.2.0, 2.0.0)</osgi.service.component.imp.pkg.version.range>
         <osgi.framework.imp.pkg.version.range>[1.7.0, 2.0.0)</osgi.framework.imp.pkg.version.range>
         <commons-collections.version>3.2.0.wso2v1</commons-collections.version>
