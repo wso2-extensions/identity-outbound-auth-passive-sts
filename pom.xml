@@ -93,12 +93,12 @@
             </plugin>
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>2.3.1</version>
+                <version>${maven.compiler.plugin.version}</version>
                 <inherited>true</inherited>
                 <configuration>
                     <encoding>UTF-8</encoding>
-                    <source>1.8</source>
-                    <target>1.8</target>
+                    <source>21</source>
+                    <target>21</target>
                 </configuration>
             </plugin>
             <plugin>
@@ -208,9 +208,8 @@
         <commons-collections.version>3.2.0.wso2v1</commons-collections.version>
         <carbon.p2.plugin.version>1.5.3</carbon.p2.plugin.version>
         <maven.buildnumber.plugin.version>1.4</maven.buildnumber.plugin.version>
-        <maven.scr.plugin.version>1.7.2</maven.scr.plugin.version>
-        <maven.bundle.plugin.version>3.2.0</maven.bundle.plugin.version>
-        <maven.compiler.plugin.version>2.3.1</maven.compiler.plugin.version>
+        <maven.bundle.plugin.version>5.1.9</maven.bundle.plugin.version>
+        <maven.compiler.plugin.version>3.14.1</maven.compiler.plugin.version>
         <saml.common.util.version>1.0.3</saml.common.util.version>
         <saml.common.util.version.range>[1.0.0,2.0.0)</saml.common.util.version.range>
 
@@ -219,7 +218,7 @@
         <!-- Pax Logging Version -->
         <pax.logging.api.version>1.10.1</pax.logging.api.version>
         <!-- Servlet API -->
-        <imp.pkg.version.javax.servlet>[2.6.0, 3.0.0)</imp.pkg.version.javax.servlet>
+        <imp.pkg.version.javax.servlet>[3.1.0, 4.0.0)</imp.pkg.version.javax.servlet>
         <!-- Carbon kernel version -->
         <carbon.kernel.version>4.6.0</carbon.kernel.version>
         <carbon.kernel.feature.version>4.6.0</carbon.kernel.feature.version>
